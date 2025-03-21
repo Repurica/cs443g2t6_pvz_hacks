@@ -34,8 +34,8 @@ bool InjectDLL(DWORD processID, const char* dllPath) {
     if (!pLoadLibrary) {
         std::cerr << "Failed to get address of LoadLibraryA function." << std::endl;
         VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
-        1
-        oseHandle(hProcess);
+
+        CloseHandle(hProcess);
         return false;
     }
 
@@ -60,12 +60,15 @@ int main() {
     DWORD processID;
     char dllPath[MAX_PATH];
 
-    std::cout << "Enter the process ID: ";          
-    std::cin >> processID;
-    std::cout << "Enter the full path to the DLL: ";
-    std::cin >> dllPath;
 
-    if (InjectDLL(processID, dllPath)) {
+    HWND hGameWindow = FindWindow(NULL, "Plants vs. Zombies");
+    DWORD pID = 0;
+    GetWindowThreadProcessId(hGameWindow, &pID);
+
+
+
+    strcpy(dllPath, "C:\\code\\cs443g2t6_pvz_hacks\\PlantModTemplate\\dllmain.cpp");
+    if (InjectDLL(pID, dllPath)) {
         std::cout << "DLL injected successfully." << std::endl;
     } else {
         std::cerr << "DLL injection failed." << std::endl;
