@@ -14,7 +14,7 @@ DWORD WINAPI MainThread(LPVOID param) {
 bool WINAPI DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved) {
     if (dwReason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(hModule);
-        AllocConsole();
+        // AllocConsole(); // Create console window
         freopen("CONOUT$", "w", stdout);
         printf("DLL injected! from dll\n");
 
