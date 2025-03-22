@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv) {
     // Ensure the DLL path is correct
-    PCSTR dll_path = "D:\\code\\cs443g2t6_pvz_hacks\\dll-stuff\\cheat.dll";
+    PCSTR dll_path = "./cheat.dll";
 
     // Find the game window
     HWND hGameWindow = FindWindowA(NULL, "Plants vs. Zombies");
