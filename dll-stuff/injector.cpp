@@ -1,75 +1,82 @@
-#define UNICODE
-#define _UNICODE
-#include <Windows.h>
-#include <TlHelp32.h>
-#include <cstdio>
+#include <windows.h>
+#include <stdio.h>
 
-int getProcId(const wchar_t* target) {
-	DWORD pID = 0;
-	PROCESSENTRY32 pe32;
-	pe32.dwSize = sizeof(PROCESSENTRY32);
-	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	do {
-		if (wcscmp(pe32.szExeFile, target) == 0) {
-			CloseHandle(hSnapshot);
-			pID = pe32.th32ProcessID;
-			break;
-		}
-	} while (Process32Next(hSnapshot, &pe32));
+int main(int argc, char** argv) {
+    // Ensure the DLL path is correct
+    PCSTR dll_path = "D:\\code\\cs443g2t6_pvz_hacks\\dll-stuff\\cheat.dll";
 
-	CloseHandle(hSnapshot);
-	return pID;
-}
+    // Find the game window
+    HWND hGameWindow = FindWindowA(NULL, "Plants vs. Zombies");
+    if (!hGameWindow) {
+        printf("Failed to find game window. Error: %d\n", GetLastError());
+        return 1;
+    }
 
-int main (int argc, char* argv[]) {
-	printf("hi start\n");
-	const wchar_t* process = L"PlantsVsZombies.exe";
-	int pID = getProcId(process);
-		
-	if (pID == 0) {
-		printf("Process not found.\n");
-		return 1;
-	}
-	// HWND hGameWindow = FindWindow(NULL, L"Plants vs. Zombies");
-    // DWORD pID = 0;
-    // GetWindowThreadProcessId(hGameWindow, &pID);
-    // HANDLE processHandle = NULL;
-    // processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pID);
-    
-    
+    // Get process ID
+    DWORD PID = 0;
+    GetWindowThreadProcessId(hGameWindow, &PID);
+    if (PID == 0) {
+        printf("Failed to get process ID. Error: %d\n", GetLastError());
+        return 1;
+    }
 
+    // Open process with necessary access
+    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, PID);
+    if (hProcess == NULL) {
+        printf("Failed to retrieve handle to remote process: %d\n", GetLastError());
+        return 1;
+    }
 
-	char dll[] = "test-inject.dll";		// name of dll ile to inject
-	char dllPath[MAX_PATH] = { 0 };
-	GetFullPathNameA(dll, MAX_PATH, dllPath, NULL);
-	
-	if (GetFileAttributesA(dllPath) == INVALID_FILE_ATTRIBUTES) {
-		printf("DLL file not found.\n");
-		return 1;
-	}
+    // Allocate memory in the target process
+    LPVOID allocated_mem = VirtualAllocEx(hProcess, NULL, strlen(dll_path) + 1, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (allocated_mem == NULL) {
+        printf("Failed to allocate memory in remote process: %d\n", GetLastError());
+        CloseHandle(hProcess);
+        return 1;
+    }
+    printf("Memory allocated at: %p\n", allocated_mem);
 
-	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pID);
-		
-	if (hProcess == NULL) {
-		printf("Failed to open process.\n");
-		return 1;
-	}
+    // Write DLL path into allocated memory
+    if (!WriteProcessMemory(hProcess, allocated_mem, dll_path, strlen(dll_path) + 1, NULL)) {
+        printf("Failed to write memory in remote process: %d\n", GetLastError());
+        VirtualFreeEx(hProcess, allocated_mem, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return 1;
+    }
 
-	LPVOID pszLibFileRemote = VirtualAllocEx(hProcess, NULL, strlen(dllPath) + 1, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    // Get the address of LoadLibraryA in kernel32.dll
+    HMODULE kernel32Base = GetModuleHandleA("kernel32.dll");
+    if (kernel32Base == NULL) {
+        printf("Failed to retrieve handle to kernel32.dll: %d\n", GetLastError());
+        VirtualFreeEx(hProcess, allocated_mem, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return 1;
+    }
 
-	if (pszLibFileRemote == NULL) {
-		printf("Failed to allocate memory in remote process.\n");
-		CloseHandle(hProcess);
-		return 1;
-	}
+    FARPROC load_library_address = GetProcAddress(kernel32Base, "LoadLibraryA");
+    if (load_library_address == NULL) {
+        printf("Failed to get address of LoadLibraryA: %d\n", GetLastError());
+        VirtualFreeEx(hProcess, allocated_mem, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return 1;
+    }
 
-	WriteProcessMemory(hProcess, pszLibFileRemote, dllPath, strlen(dllPath) + 1, NULL);
-	HANDLE handleThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, pszLibFileRemote, 0, NULL);
+    // Create remote thread to load the DLL
+    HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)load_library_address, allocated_mem, 0, NULL);
+    if (hThread == NULL) {
+        printf("Failed to create remote thread in target process: %d\n", GetLastError());
+        VirtualFreeEx(hProcess, allocated_mem, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return 1;
+    }
 
-	WaitForSingleObject(handleThread, INFINITE);
-	CloseHandle(handleThread);
-	VirtualFreeEx(hProcess, dllPath, 0, MEM_RELEASE);
-	CloseHandle(hProcess);
+    printf("Thread handle: %p\n", hThread);
+    WaitForSingleObject(hThread, INFINITE);
 
-	return 0;
+    // Cleanup
+    VirtualFreeEx(hProcess, allocated_mem, 0, MEM_RELEASE);
+    CloseHandle(hThread);
+    CloseHandle(hProcess);
+
+    return 0;
 }
