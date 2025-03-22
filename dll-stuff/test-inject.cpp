@@ -14,10 +14,10 @@ DWORD WINAPI MainThread(LPVOID param) {
 bool WINAPI DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved) {
 	if (dwReason == DLL_PROCESS_ATTACH) {
 		printf("DLL injected! from dll\n");
-		AllocConsole();
+		// AllocConsole();
 
-		// MessageBoxA(NULL, "DLL injected!", "DLL injected!", MB_OK);
-		// CreateThread(0, 0, MainThread, hModule, 0, 0);
+		MessageBoxA(NULL, "DLL injected!", "DLL injected!", MB_OK);
+		CreateThread(0, 0, MainThread, hModule, 0, 0);
 	}
 	return true;
 }
