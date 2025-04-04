@@ -65,71 +65,42 @@ VOID mower_reset(HANDLE processHandle) {
 
     ReadProcessMemory(processHandle, (LPVOID)(baseAddress + offset), &baseAddress, 4, NULL);
 
-    float position = -20.0f; // Use float type for the position
-    WriteProcessMemory(processHandle, (LPVOID)(0x679D58), &position, sizeof(position), nullptr); // Use sizeof(buffer) to ensure correct byte size
-
-    for (int i = 0; i < 5; i++) {
-        DWORD_PTR currentBaseAddress;
-        ReadProcessMemory(processHandle, (LPVOID)(baseAddress + (i * 0x48)), &currentBaseAddress, sizeof(currentBaseAddress), nullptr);
+    DWORD_PTR position = 0xA0C1; // Write A0C1 to the memory
+    ReadProcessMemory(processHandle, (LPVOID)(0x679D58), &position, 4, nullptr); // Use sizeof(buffer) to ensure correct byte size
+    WriteProcessMemory(processHandle, (LPVOID)(0x679D58), &position, 4, nullptr); // Use sizeof(buffer) to ensure correct byte size
+    std::ostringstream oss;
+    oss << "Position: 0x" << std::hex << position;
+    std::string positionMessage = oss.str();
+    MessageBoxA(NULL, positionMessage.c_str(), "Reset Position", MB_OK);
+    // for (int i = 0; i < 5; i++) {
+    //     DWORD_PTR currentBaseAddress;
+    //     ReadProcessMemory(processHandle, (LPVOID)(baseAddress + (i * 0x48)), &currentBaseAddress, 4, nullptr);
         
-        BYTE shellcode[] = {
-            0x60,                               // pushad
-            0x68, (BYTE)(currentBaseAddress & 0xFF), (BYTE)((currentBaseAddress >> 8) & 0xFF), (BYTE)((currentBaseAddress >> 16) & 0xFF), (BYTE)((currentBaseAddress >> 24) & 0xFF), // push currentBaseAddress
-            0xB8, (BYTE)(i & 0xFF), (BYTE)((i >> 8) & 0xFF), (BYTE)((i >> 16) & 0xFF), (BYTE)((i >> 24) & 0xFF), // mov eax, i
-            0xE8, 0x60, 0x81, 0x45, 0x00,       // call 00458160
-            0x61,                               // popad
-            0xC3                                // ret
-        };
-        // Update shellcode to display a MessageBoxA
-        BYTE messageBoxShellcode[] = {
-            0x60,                               // pushad
-            0x68, 0x00, 0x00, 0x00, 0x00,       // push 0 (MB_OK)
-            0x68, 0x00, 0x00, 0x00, 0x00,       // push address of "Title"
-            0x68, 0x00, 0x00, 0x00, 0x00,       // push address of "Message"
-            0xB8, 0x00, 0x00, 0x00, 0x00,       // mov eax, address of MessageBoxA
-            0xFF, 0xD0,                         // call eax
-            0x61,                               // popad
-            0xC3                                // ret
-        };
+    //     BYTE shellcode[] = {
+    //         0x60,                               // pushad
 
-        // Allocate memory for strings and MessageBoxA address
-        LPVOID remoteMessage = VirtualAllocEx(processHandle, nullptr, 256, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-        if (remoteMessage) {
-            const char* message = "Hello from shellcode!";
-            const char* title = "Shellcode MessageBox";
-            FARPROC messageBoxAddr = GetProcAddress(GetModuleHandleA("user32.dll"), "MessageBoxA");
+    //         0x68, 0x78, 0x1E, 0xC8, 0x14, // push 14C81E78
+    //         0xB8, 0x00, 0x00, 0x00, 0x00, // mov eax, 0
+    //         0xE8, 0x60, 0x81, 0x45, 0x00,       // call 00458160
+    //         0x61,                               // popad
+    //         0xC3                                // ret
+    //     };
+    
+    
 
-            // Write strings and function address to remote process
-            WriteProcessMemory(processHandle, remoteMessage, message, strlen(message) + 1, nullptr);
-            WriteProcessMemory(processHandle, (LPVOID)((BYTE*)remoteMessage + 64), title, strlen(title) + 1, nullptr);
-            *(DWORD*)&messageBoxShellcode[6] = (DWORD)((BYTE*)remoteMessage + 64); // Title
-            *(DWORD*)&messageBoxShellcode[11] = (DWORD)remoteMessage;             // Message
-            *(DWORD*)&messageBoxShellcode[16] = (DWORD)messageBoxAddr;            // MessageBoxA address
-
-            // Allocate memory for shellcode
-            LPVOID remoteShellcode = VirtualAllocEx(processHandle, nullptr, sizeof(messageBoxShellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-            if (remoteShellcode) {
-            WriteProcessMemory(processHandle, remoteShellcode, messageBoxShellcode, sizeof(messageBoxShellcode), nullptr);
-            HANDLE thread = CreateRemoteThread(processHandle, nullptr, 0, (LPTHREAD_START_ROUTINE)remoteShellcode, nullptr, 0, nullptr);
-            if (thread) {
-                WaitForSingleObject(thread, INFINITE);
-                CloseHandle(thread);
-            }
-            VirtualFreeEx(processHandle, remoteShellcode, 0, MEM_RELEASE);
-            }
-            VirtualFreeEx(processHandle, remoteMessage, 0, MEM_RELEASE);
-        }
-        LPVOID remoteMemory = VirtualAllocEx(processHandle, nullptr, sizeof(shellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-        if (remoteMemory) {
-            WriteProcessMemory(processHandle, remoteMemory, shellcode, sizeof(shellcode), nullptr);
-            HANDLE thread = CreateRemoteThread(processHandle, nullptr, 0, (LPTHREAD_START_ROUTINE)remoteMemory, nullptr, 0, nullptr);
-            if (thread) {
-                WaitForSingleObject(thread, INFINITE);
-                CloseHandle(thread);
-            }
-            VirtualFreeEx(processHandle, remoteMemory, 0, MEM_RELEASE);
-        }
-    }
+    //         // Allocate memory for shellcode
+    //         LPVOID remoteShellcode = VirtualAllocEx(processHandle, nullptr, sizeof(shellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    //         if (remoteShellcode) {
+    //         WriteProcessMemory(processHandle, remoteShellcode, shellcode, sizeof(shellcode), nullptr);
+    //         HANDLE thread = CreateRemoteThread(processHandle, nullptr, 0, (LPTHREAD_START_ROUTINE)remoteShellcode, nullptr, 0, nullptr);
+    //         if (thread) {
+    //             WaitForSingleObject(thread, INFINITE);
+    //             CloseHandle(thread);
+    //         }
+    //         VirtualFreeEx(processHandle, remoteShellcode, 0, MEM_RELEASE);
+    //         }
+    //         // Removed unnecessary VirtualFreeEx for undefined remoteMessage
+    // }
 }
 
 // Main thread to listen for F6 key press and start the sun hack
