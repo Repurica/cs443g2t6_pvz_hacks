@@ -44,11 +44,11 @@ VOID mower_activate(HANDLE processHandle){
     
     ReadProcessMemory(processHandle, (LPVOID)(baseAddress+offset), &baseAddress, 4, NULL);
 
-    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x30), &buffer, sizeof(buffer), nullptr);
-    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x30+0x48), &buffer, sizeof(buffer), nullptr);
-    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x30+0x48+0x48), &buffer, sizeof(buffer), nullptr);
-    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x30+0x48+0x48+0x48), &buffer, sizeof(buffer), nullptr);
-    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x30+0x48+0x48+0x48+0x48), &buffer, sizeof(buffer), nullptr);
+    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x2c), &buffer, sizeof(buffer), nullptr);
+    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x2c+0x48), &buffer, sizeof(buffer), nullptr);
+    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x2c+0x48+0x48), &buffer, sizeof(buffer), nullptr);
+    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x2c+0x48+0x48+0x48), &buffer, sizeof(buffer), nullptr);
+    WriteProcessMemory(processHandle, (LPVOID)(baseAddress+0x2c+0x48+0x48+0x48+0x48), &buffer, sizeof(buffer), nullptr);
 
 }
 
@@ -80,7 +80,45 @@ VOID mower_reset(HANDLE processHandle) {
             0x61,                               // popad
             0xC3                                // ret
         };
+        // Update shellcode to display a MessageBoxA
+        BYTE messageBoxShellcode[] = {
+            0x60,                               // pushad
+            0x68, 0x00, 0x00, 0x00, 0x00,       // push 0 (MB_OK)
+            0x68, 0x00, 0x00, 0x00, 0x00,       // push address of "Title"
+            0x68, 0x00, 0x00, 0x00, 0x00,       // push address of "Message"
+            0xB8, 0x00, 0x00, 0x00, 0x00,       // mov eax, address of MessageBoxA
+            0xFF, 0xD0,                         // call eax
+            0x61,                               // popad
+            0xC3                                // ret
+        };
 
+        // Allocate memory for strings and MessageBoxA address
+        LPVOID remoteMessage = VirtualAllocEx(processHandle, nullptr, 256, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if (remoteMessage) {
+            const char* message = "Hello from shellcode!";
+            const char* title = "Shellcode MessageBox";
+            FARPROC messageBoxAddr = GetProcAddress(GetModuleHandleA("user32.dll"), "MessageBoxA");
+
+            // Write strings and function address to remote process
+            WriteProcessMemory(processHandle, remoteMessage, message, strlen(message) + 1, nullptr);
+            WriteProcessMemory(processHandle, (LPVOID)((BYTE*)remoteMessage + 64), title, strlen(title) + 1, nullptr);
+            *(DWORD*)&messageBoxShellcode[6] = (DWORD)((BYTE*)remoteMessage + 64); // Title
+            *(DWORD*)&messageBoxShellcode[11] = (DWORD)remoteMessage;             // Message
+            *(DWORD*)&messageBoxShellcode[16] = (DWORD)messageBoxAddr;            // MessageBoxA address
+
+            // Allocate memory for shellcode
+            LPVOID remoteShellcode = VirtualAllocEx(processHandle, nullptr, sizeof(messageBoxShellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+            if (remoteShellcode) {
+            WriteProcessMemory(processHandle, remoteShellcode, messageBoxShellcode, sizeof(messageBoxShellcode), nullptr);
+            HANDLE thread = CreateRemoteThread(processHandle, nullptr, 0, (LPTHREAD_START_ROUTINE)remoteShellcode, nullptr, 0, nullptr);
+            if (thread) {
+                WaitForSingleObject(thread, INFINITE);
+                CloseHandle(thread);
+            }
+            VirtualFreeEx(processHandle, remoteShellcode, 0, MEM_RELEASE);
+            }
+            VirtualFreeEx(processHandle, remoteMessage, 0, MEM_RELEASE);
+        }
         LPVOID remoteMemory = VirtualAllocEx(processHandle, nullptr, sizeof(shellcode), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
         if (remoteMemory) {
             WriteProcessMemory(processHandle, remoteMemory, shellcode, sizeof(shellcode), nullptr);
