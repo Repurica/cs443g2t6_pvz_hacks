@@ -35,7 +35,7 @@ private:
 
             int delta = currentValue - backupValue;
 
-            if (abs(delta) > 200 && !(delta == 25 || delta == 50 || delta == 75)) {
+            if (abs(delta) > 200 && !(delta == 25)) {
                 std::cerr << "[ALERT] Abnormal sun change! Resetting: delta = " << delta << "\n";
                 WriteProcessMemory(hProcess, (LPVOID)sunAddress, &backupValue, sizeof(int), NULL);
             } else {

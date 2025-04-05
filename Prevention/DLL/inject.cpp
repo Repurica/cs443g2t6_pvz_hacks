@@ -32,7 +32,7 @@ int main() {
         return 1;
     }
 
-    const char* dllPath = "C:\\Users\\Enqi\\Documents\\GitHub\\cs443g2t6_pvz_hacks\\Prevention\\DLL\\DLL_Sun.dll";
+    const char* dllPath = "C:\\Users\\Enqi\\Documents\\GitHub\\cs443g2t6_pvz_hacks\\Prevention\\mov_address.dll";
     void* alloc = VirtualAllocEx(hProcess, 0, strlen(dllPath), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     WriteProcessMemory(hProcess, alloc, dllPath, strlen(dllPath), nullptr);
 
