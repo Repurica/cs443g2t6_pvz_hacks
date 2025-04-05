@@ -2,14 +2,14 @@
 #include <TlHelp32.h>
 #include <iostream>
 
-DWORD GetProcessID(const wchar_t* procName) {
+DWORD GetProcessID(const char* procName) {
     PROCESSENTRY32 pe;
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     pe.dwSize = sizeof(PROCESSENTRY32);
 
     if (Process32First(snapshot, &pe)) {
         do {
-            if (!wcscmp(procName, pe.szExeFile)) {
+            if (!strcmp(procName, pe.szExeFile)) {
                 CloseHandle(snapshot);
                 return pe.th32ProcessID;
             }
@@ -20,7 +20,7 @@ DWORD GetProcessID(const wchar_t* procName) {
 }
 
 int main() {
-    DWORD pid = GetProcessID(L"PlantsVsZombies.exe");
+    DWORD pid = GetProcessID("PlantsVsZombies.exe");
     if (!pid) {
         std::cerr << "[❌] Game not found.\n";
         return 1;

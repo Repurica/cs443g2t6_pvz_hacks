@@ -1,3 +1,4 @@
+// detect and prevent edit to sun value
 
 #include <windows.h>
 #include <iostream>
