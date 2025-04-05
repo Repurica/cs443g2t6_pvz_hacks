@@ -19,7 +19,6 @@ using namespace std;
 
 
 
-
 DWORD string_to_hex(string i){
     stringstream stream;
     stream << hex << stoi(i);
@@ -238,7 +237,7 @@ void no_damage(HANDLE processHandle){
 
 
 int main() {
- 
+
     HWND hGameWindow = FindWindow(NULL, "Plants vs. Zombies");
     DWORD pID = 0;
     GetWindowThreadProcessId(hGameWindow, &pID);
@@ -249,12 +248,12 @@ int main() {
     
 
 
-    thread(disable_pause_have_settings,processHandle).detach();
+    // thread(disable_pause_have_settings,processHandle).detach();
     // disable_natural_zombie(processHandle);
-    clear_lawn_mowers(processHandle) ;
+    // clear_lawn_mowers(processHandle) ;
     // no_damage(processHandle);
-    auto_collect(processHandle);
-    // sun(processHandle);
+    // auto_collect(processHandle);
+    sun(processHandle);
     // set_zombie_init_speed(processHandle);
 
 
