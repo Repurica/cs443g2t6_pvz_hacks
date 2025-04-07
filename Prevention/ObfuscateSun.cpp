@@ -34,7 +34,7 @@ private:
             int backupValue = deobfuscate(*obfuscatedBackupPtr);
             int delta = currentValue - backupValue;
     
-            if (delta > 25 || (delta > 0 && delta != 25)) {
+            if (delta != 25) {
                 std::cerr << "[ALERT] Invalid sun increase! Resetting: delta = " << delta << "\n";
                 WriteProcessMemory(hProcess, (LPVOID)sunAddress, &backupValue, sizeof(int), NULL);
             } else {
