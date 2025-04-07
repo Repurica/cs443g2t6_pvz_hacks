@@ -25,35 +25,55 @@ private:
     }
 
     void checkLoop() {
-        int lastValid = deobfuscate(*obfuscatedBackupPtr);
-    
         while (true) {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
     
             int currentValue = 0;
             ReadProcessMemory(hProcess, (LPCVOID)sunAddress, &currentValue, sizeof(int), NULL);
     
-            int delta = currentValue - lastValid;
+            int backupValue = deobfuscate(*obfuscatedBackupPtr);
+            int delta = currentValue - backupValue;
     
-            // Read sun tokens on screen from 0x6A7CC8
-            int sunTokenCount = 0;
-            ReadProcessMemory(hProcess, (LPCVOID)0x6A7CC8, &sunTokenCount, sizeof(int), NULL);
-    
-            if (delta > 0) {
-                if ((delta == 25 || delta == 0) && sunTokenCount > 0) {
-                    lastValid = currentValue;
-                    relocateBackup(currentValue);
-                } else {
-                    std::cerr << "[ALERT] Invalid sun increase detected. Delta = " << delta << ", Suntoken = " << sunTokenCount << "\n";
-                    WriteProcessMemory(hProcess, (LPVOID)sunAddress, &lastValid, sizeof(int), NULL);
-                }
+            if (delta > 25 || (delta > 0 && delta != 25)) {
+                std::cerr << "[ALERT] Invalid sun increase! Resetting: delta = " << delta << "\n";
+                WriteProcessMemory(hProcess, (LPVOID)sunAddress, &backupValue, sizeof(int), NULL);
             } else {
-                // Allow all valid deductions
-                lastValid = currentValue;
-                relocateBackup(currentValue);
+                relocateBackup(currentValue);  // Accept as valid and re-randomise
             }
         }
     }
+    
+
+    // void checkLoop() {
+    //     int lastValid = deobfuscate(*obfuscatedBackupPtr);
+    
+    //     while (true) {
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
+    //         int currentValue = 0;
+    //         ReadProcessMemory(hProcess, (LPCVOID)sunAddress, &currentValue, sizeof(int), NULL);
+    
+    //         int delta = currentValue - lastValid;
+    
+    //         // Read sun tokens on screen from 0x6A7CC8
+    //         int sunTokenCount = 0;
+    //         ReadProcessMemory(hProcess, (LPCVOID)0x6A7CC8, &sunTokenCount, sizeof(int), NULL);
+    
+    //         if (delta > 0) {
+    //             if ((delta == 25 || delta == 0) && sunTokenCount > 0) {
+    //                 lastValid = currentValue;
+    //                 relocateBackup(currentValue);
+    //             } else {
+    //                 std::cerr << "[ALERT] Invalid sun increase detected. Delta = " << delta << ", Suntoken = " << sunTokenCount << "\n";
+    //                 WriteProcessMemory(hProcess, (LPVOID)sunAddress, &lastValid, sizeof(int), NULL);
+    //             }
+    //         } else {
+    //             // Allow all valid deductions
+    //             lastValid = currentValue;
+    //             relocateBackup(currentValue);
+    //         }
+    //     }
+    // }
 
 public:
     SunProtector(HANDLE proc, DWORD_PTR addr) {
