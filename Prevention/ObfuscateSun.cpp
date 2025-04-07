@@ -40,11 +40,11 @@ private:
             ReadProcessMemory(hProcess, (LPCVOID)0x6A7CC8, &sunTokenCount, sizeof(int), NULL);
     
             if (delta > 0) {
-                if (delta == 25 && sunTokenCount > 0) {
+                if ((delta == 25 || delta == 0) && sunTokenCount > 0) {
                     lastValid = currentValue;
                     relocateBackup(currentValue);
                 } else {
-                    std::cerr << "[ALERT] Invalid sun increase detected. Delta = " << delta << "\n";
+                    std::cerr << "[ALERT] Invalid sun increase detected. Delta = " << delta << ", Suntoken = " << sunTokenCount << "\n";
                     WriteProcessMemory(hProcess, (LPVOID)sunAddress, &lastValid, sizeof(int), NULL);
                 }
             } else {
