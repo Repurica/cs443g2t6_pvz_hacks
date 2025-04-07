@@ -25,21 +25,32 @@ private:
     }
 
     void checkLoop() {
+        int lastValid = deobfuscate(*obfuscatedBackupPtr);
+    
         while (true) {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
+    
             int currentValue = 0;
             ReadProcessMemory(hProcess, (LPCVOID)sunAddress, &currentValue, sizeof(int), NULL);
-
-            int backupValue = deobfuscate(*obfuscatedBackupPtr);
-
-            int delta = currentValue - backupValue;
-
-            if (abs(delta) > 200 && !(delta == 25)) {
-                std::cerr << "[ALERT] Abnormal sun change! Resetting: delta = " << delta << "\n";
-                WriteProcessMemory(hProcess, (LPVOID)sunAddress, &backupValue, sizeof(int), NULL);
+    
+            int delta = currentValue - lastValid;
+    
+            // Read sun tokens on screen from 0x6A7CC8
+            int sunTokenCount = 0;
+            ReadProcessMemory(hProcess, (LPCVOID)0x6A7CC8, &sunTokenCount, sizeof(int), NULL);
+    
+            if (delta > 0) {
+                if (delta == 25 && sunTokenCount > 0) {
+                    lastValid = currentValue;
+                    relocateBackup(currentValue);
+                } else {
+                    std::cerr << "[ALERT] Invalid sun increase detected. Delta = " << delta << "\n";
+                    WriteProcessMemory(hProcess, (LPVOID)sunAddress, &lastValid, sizeof(int), NULL);
+                }
             } else {
-                relocateBackup(currentValue);  // Accept as valid and re-randomise
+                // Allow all valid deductions
+                lastValid = currentValue;
+                relocateBackup(currentValue);
             }
         }
     }
